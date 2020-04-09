@@ -16,7 +16,8 @@ class Conv2D(nn.Module):
 class Extractor(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(Extractor, self).__init__()
-        self.conv1 = Conv2D(in_channels, 16)
+        self.leakyRelu = nn.LeakyReLU(inplace = False, negative_slope = 0.1)
+        self.conv1 = nn(Conv2D(in_channels, 16)
         self.conv2 = Conv2D(16, 16, 1)
         self.conv3 = Conv2D(16, 32)
         self.conv4 = Conv2D(32, 32, 1)
@@ -29,19 +30,28 @@ class Extractor(nn.Module):
         self.conv11 = Conv2D(128, out_channels)
         self.conv12 = Conv2D(out_channels, out_channels, 1)   
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
-        x = self.conv5(x)
-        x = self.conv6(x)
-        x = self.conv7(x)
-        x = self.conv8(x)
-        x = self.conv9(x)
-        x = self.conv10(x)
-        x = self.conv11(x)
-        x = self.conv12(x)
-        return x
+        x = self.leakyRelu(self.conv1(x))
+        x = self.leakyRelu(self.conv2(x))
+        c1 = x
+        x = self.leakyRelu(self.conv3(x))
+        x = self.leakyRelu(self.conv4(x))
+        c2 = x
+        x = self.leakyRelu(self.conv5(x))
+        x = self.leakyRelu(self.conv6(x))
+        c3 = x
+        x = self.leakyRelu(self.conv7(x))
+        x = self.leakyRelu(self.conv8(x))
+        c4 = x
+        x = self.leakyRelu(self.conv9(x))
+        x = self.leakyRelu(self.conv10(x))
+        c5 = x
+        x = self.leakyRelu(self.conv11(x))
+        x = self.leakyRelu(self.conv12(x))
+        c6 = x
+
+        return [c1, c2, c3, c4, c5, c6]
+                
+        
         
 
 model = Extractor(3, 192)
