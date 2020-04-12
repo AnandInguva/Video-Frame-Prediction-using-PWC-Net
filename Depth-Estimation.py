@@ -21,7 +21,6 @@ input_width  = 512
 def test_simple(model):
     total_loss =0 
     toal_count = 0
-    print("============================= TEST ============================")
     model.switch_to_eval()
 
     img = np.float32(io.imread(img_path))/255.0
