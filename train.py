@@ -15,6 +15,8 @@ import torchvision
 from Unet import Model
 import torch.optim as optim
 from torch import nn
+import torchvision
+from torchvision import transforms
 
 '''
 train images -> 11,000
@@ -27,50 +29,56 @@ trueImagesPath = './true_images'
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 
-temp = './dataset'
-
-def getImages(path):
+root = './outputs'
+predictedPath = root + '/predicted_images'
+truePath = root + '/true_images'
+def getFileNames(path):
     files = os.listdir(path)
-    data = np.zeros((len(files),256,256,3))
-    for i, file in enumerate(files):
-        image = cv2.imread(path + '/' + file)
-        # mean = np.mean(image)
-        # image = (image - mean) / np.std(image)
-        image = image / np.max(image)
-        data[i, :, :, :] = image
-    return data
+    return files
 
-# predictedFrames = getImages(trainImagesPath)
-# trueFrames = getImages(trueImagesPath)
 
-t = getImages(temp)
-p = getImages(temp)
-tensor_y = torch.Tensor(p)
-tensor_x = torch.Tensor(t)
-tensor_x = tensor_x.permute(0, 3, 1, 2)
-tensor_y = tensor_y.permute(0, 3, 1, 2)
 
-x = torchvision.transforms.Normalize(mean = 0, std = 0.1)
+class PredictedImages(Dataset):
+    def __init__(self, predicted_path, true_path, transform):
+        self.predictedImageList = getFileNames(predicted_path)
+        self.trueImageList = getFileNames(true_path)
+        self.transform = transform
 
-dataset = data.TensorDataset(tensor_x, tensor_y)
-dataloader = DataLoader(dataset, batch_size = 4)
-images, labels = next(iter(dataloader))
+    def __len__(self):
+        return len(self.predictedImageList)
+
+    def __getitem__(self, idx):
+        predictedImageName = self.predictedImageList[idx]
+        trueImageName = self.trueImageList[idx]
+        predictedImage = cv2.imread(predictedPath + '/' + predictedImageName)
+        trueImage = cv2.imread(truePath + '/' + trueImageName)
+        return self.transform(predictedImage), self.transform(trueImage)
+
+transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+
+print('---------loading data----------------')
+dataset = PredictedImages(predictedPath, truePath, transform)
+trainLoader  = DataLoader(dataset, 8)
+print('------------------Data is loaded-----------------------')
 
 
 model = Model(3, 3).getModel()
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
+
+
 model = model.to(device)
 
-def train_model(model, criterion, optimizer, epochs = 20):
+def train_model(model, criterion, optimizer, epochs = 100):
     model.train()
     losses = []
     for epoch in range(epochs + 1):
         print('Epoch {}/{}'.format(epoch, epochs))
         print('-' * 70)
         running_loss = 0.0
-        for inputs, labels in dataloader:
+        for inputs, labels in trainLoader:
             inputs = inputs.to(device)
             labels = labels.to(device)
             optimizer.zero_grad()
@@ -84,4 +92,5 @@ def train_model(model, criterion, optimizer, epochs = 20):
         losses.append(running_loss)
     return model, losses
 
+print('---------------model training---------------------')
 model, losses = train_model(model, criterion, optimizer, 2)
